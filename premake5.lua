@@ -2,6 +2,7 @@ newaction {
     trigger     = "clean",
     description = "Clean the build and intermediate files",
     execute     = function ()
+        os.rmdir("bin")
         os.rmdir("build")
         os.rmdir(".vs")
         os.rmdir("vendor/spdlog/build")
@@ -16,102 +17,101 @@ newaction {
 
 workspace "CEFFramework"
     configurations { "Debug", "Release", "Dist" }
-    architecture "x64"
     startproject "CEFFrameworkExample"
+    architecture "x64"
 
-project "CEFFrameworkExample"
-    kind "ConsoleApp"
-    language "C++"
-    cppdialect "C++20"
-    staticruntime "Off"
+    project "CEFFrameworkExample"
+        kind "ConsoleApp"
+        staticruntime "Off"
+        language "C++"
+        cppdialect "C++20"
 
-    targetname "CEFFrameworkExample"
-    targetdir "build/%{cfg.buildcfg}/out/CEFFrameworkExample"
-    objdir "build/%{cfg.buildcfg}/int/CEFFrameworkExample"
+        targetname "CEFFrameworkExample"
+        targetdir "build/%{cfg.buildcfg}/out/CEFFrameworkExample"
+        objdir "build/%{cfg.buildcfg}/int/CEFFrameworkExample"
 
-    includedirs { "CEFFramework/include" }
-    files { "CEFFrameworkExample/include/**.hpp",
-            "CEFFrameworkExample/src/**.hpp", 
-            "CEFFrameworkExample/src/**.cpp" 
-        }
-    
-    dependson { "CEFFramework" }
-    links { "CEFFramework" }
+        includedirs { "CEFFramework/include" }
+        files { "CEFFrameworkExample/include/**.hpp",
+                "CEFFrameworkExample/src/**.hpp", 
+                "CEFFrameworkExample/src/**.cpp" 
+            }
+        
+        dependson { "CEFFramework" }
+        links { "CEFFramework" }
 
-project "CEFFramework"
-    kind "SharedLib"
-    language "C++"
-    cppdialect "C++20"
-    staticruntime "Off"
+    project "CEFFramework"
+        kind "SharedLib"
+        staticruntime "Off"
+        language "C++"
+        cppdialect "C++20"
 
-    targetname "CEFFramework"  -- <-- This is the output name (no config suffix)
-    targetdir "build/%{cfg.buildcfg}/out/CEFFramework"
-    objdir "build/%{cfg.buildcfg}/int/CEFFramework"
+        targetname "CEFFramework"  -- <-- This is the output name (no config suffix)
+        targetdir "build/%{cfg.buildcfg}/out/CEFFramework"
+        objdir "build/%{cfg.buildcfg}/int/CEFFramework"
 
-    includedirs { "CEFFramework/include" }
-    files { "CEFFramework/include/**.hpp",
-            "CEFFramework/src/**.hpp", 
-            "CEFFramework/src/**.cpp" 
-          }
+        includedirs { "CEFFramework/include" }
+        files { "CEFFramework/include/**.hpp",
+                "CEFFramework/src/**.hpp", 
+                "CEFFramework/src/**.cpp" 
+            }
 
-    -- Common to all configurations
-    filter { "system:windows" }
-        defines { "CEF_FRAMEWORK_BUILD" }
+        -- Common to all configurations
+        filter { "system:windows" }
+            defines { "CEF_FRAMEWORK_BUILD" }
 
-    filter "configurations:Debug"
-        defines { "CEF_FRAMEWORK_DEBUG", "CEF_FRAMEWORK_BUILD" }
-        libdirs { "vendor/spdlog/build/Debug" }
-        links {"spdlogd"}
-        symbols "On"
+        filter "configurations:Debug"
+            defines { "CEF_FRAMEWORK_DEBUG", "CEF_FRAMEWORK_BUILD" }
+            libdirs { "vendor/spdlog/build/Debug" }
+            links {"spdlogd"}
+            symbols "On"
 
-    filter "configurations:Release"
-        defines { "CEF_FRAMEWORK_NDEBUG", "CEF_FRAMEWORK_BUILD" }
-        libdirs { "vendor/spdlog/build/Release" }
-        links {"spdlog"}
-        optimize "On"
+        filter "configurations:Release"
+            defines { "CEF_FRAMEWORK_NDEBUG", "CEF_FRAMEWORK_BUILD" }
+            libdirs { "vendor/spdlog/build/Release" }
+            links {"spdlog"}
+            optimize "On"
 
-    filter "configurations:Dist"
-        defines { "CEF_FRAMEWORK_NDEBUG", "CEF_FRAMEWORK_DIST", "CEF_FRAMEWORK_BUILD" }
-        libdirs { "vendor/spdlog/build/Release" }
-        links {"spdlog"}
-        optimize "On"
+        filter "configurations:Dist"
+            defines { "CEF_FRAMEWORK_NDEBUG", "CEF_FRAMEWORK_DIST", "CEF_FRAMEWORK_BUILD" }
+            libdirs { "vendor/spdlog/build/Release" }
+            links {"spdlog"}
+            optimize "On"
 
-    filter {}
+        filter {}
 
-    dependson { "spdlog"}
+        dependson { "spdlog"}
 
-project "spdlog"
-    kind "StaticLib"
-    language "C++"
-    cppdialect "C++20"
-    staticruntime "Off"
+    project "spdlog"
+        kind "StaticLib"
+        staticruntime "Off"
+        language "C++"
+        cppdialect "C++20"
 
-    -- Tell Premake to run CMake for spdlog before building your project
-    filter "system:windows"
-        prebuildcommands {
-            "cd vendor\\spdlog",
-            "rmdir /s /q build",
-            "mkdir build",
-            "cd build",
-            "cmake ..",
-            "cmake --build ."
-        }
+        -- Tell Premake to run CMake for spdlog before building the project
+        filter "system:windows"
+            prebuildcommands {
+                "cd vendor\\spdlog",
+                "rmdir /s /q build",
+                "mkdir build",
+                "cd build",
+                "cmake ..",
+                "cmake --build ."
+            }
 
-    filter "system:linux or system:macosx"
-        prebuildcommands {
-            "cd vendor/spdlog && rm -rf build && mkdir -p build && cd build && cmake .. && cmake --build ."
-        }
+        filter "system:linux or system:macosx"
+            prebuildcommands {
+                "cd vendor/spdlog && rm -rf build && mkdir -p build && cd build && cmake .. && cmake --build ."
+            }
 
-    filter {}
+        filter {}
 
-    -- If spdlog builds a static lib, link it
-    links { "spdlog" }
+        links { "spdlog" }
 
-    -- Include headers
-    includedirs { "vendor/spdlog/include" }
+        -- Include headers
+        includedirs { "vendor/spdlog/include" }
 
-    -- Optionally, exclude files since spdlog is built separately
-    files { } -- no source files here, built by CMake
+        -- Optionally, exclude files since spdlog is built separately
+        files { } -- no source files here, built by CMake
 
-    -- Where to put IDE artifacts
-    objdir "vendor/spdlog/ide-obj/%{cfg.buildcfg}"
+        -- Where to put IDE artifacts
+        objdir "vendor/spdlog/ide-obj/%{cfg.buildcfg}"
