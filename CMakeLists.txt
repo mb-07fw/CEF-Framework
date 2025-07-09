@@ -1,15 +1,19 @@
 # Root CMakeLists.txt
 
 # To regenerate CMake caches (from root directory)
-# cmake -B <root_directory = ./ or .> -S <build_directory> -G "Visual Studio 17 2022"
+# cmake -S <root_directory> -B <build_directory> -G "Visual Studio 17 2022"
 
 # Build :
 # cmake --build <out_directory> --config <configuration> [optional](--target <name>)
 
 # Clean & Rebuild:
-# rmdir /s <out_directory>
+# del /s <out_directory>
 # cmake -S . -B <out_directory>
 # cmake --build <out_directory>
+
+message(STATUS "[Root - Source Directory]: ${CMAKE_SOURCE_DIR}")
+message(STATUS "[Root - Binary Directory]: ${CMAKE_BINARY_DIR}")
+
 
 cmake_minimum_required(VERSION 3.31)
 project (CEFFramework)

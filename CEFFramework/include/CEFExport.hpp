@@ -2,11 +2,11 @@
 	#error "This project is currently only buildable on Windows."
 #endif
 
-#define CEF_FRAMEWORK_EXPORT __declspec(dllexport)
-#define CEF_FRAMEWORK_IMPORT __declspec(dllimport)
+#define CF_EXPORT __declspec(dllexport)
+#define CF_IMPORT __declspec(dllimport)
 
-#ifdef CEF_FRAMEWORK_BUILD
-	#define CEF_FRAMEWORK_API CEF_FRAMEWORK_EXPORT
+#ifdef CF_BUILD
+	#define CF_API CF_EXPORT
 #else
-	#define CEF_FRAMEWORK_API CEF_FRAMEWORK_IMPORT
+	#define CF_API CF_IMPORT
 #endif

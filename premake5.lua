@@ -1,9 +1,10 @@
+-- TODO: Figure out how to put .vcxproj files in their respective directories.
+
 newaction {
     trigger     = "clean",
     description = "Clean the build and intermediate files",
     execute     = function ()
-        os.rmdir("bin")
-        os.rmdir("build")
+        os.rmdir("out/build")
         os.rmdir(".vs")
         os.rmdir("vendor/spdlog/build")
 
@@ -20,17 +21,33 @@ workspace "CEFFramework"
     startproject "CEFFrameworkExample"
     architecture "x64"
 
+    filter { "toolset:msc*" } -- Matches MSVC compilers
+        buildoptions { "/W4", "/sdl", "/permissive-", "/utf-8" }
+
+    filter { "toolset:gcc" }
+        buildoptions { "-Wall" } -- Idk if this is equivalent but whatever.
+
+    -- TODO: Implement other stuff later...
+
+    filter {}
+
+    local build_dir = "out/build/%{cfg.buildcfg}/"
+
     project "CEFFrameworkExample"
         kind "ConsoleApp"
-        staticruntime "Off"
         language "C++"
         cppdialect "C++20"
 
-        targetname "CEFFrameworkExample"
-        targetdir "build/%{cfg.buildcfg}/out/CEFFrameworkExample"
-        objdir "build/%{cfg.buildcfg}/int/CEFFrameworkExample"
+        local output_dir = build_dir .. "out/CEFFrameworkExample"
+        local obj_dir = build_dir .. "int/CEFFrameworkExample"
 
-        includedirs { "CEFFramework/include" }
+        targetname "CEFFrameworkExample"
+
+        targetdir (output_dir)
+        objdir (obj_dir)
+
+        includedirs { "CEFFramework/include", "vendor/spdlog/include" }
+
         files { "CEFFrameworkExample/include/**.hpp",
                 "CEFFrameworkExample/src/**.hpp", 
                 "CEFFrameworkExample/src/**.cpp" 
@@ -39,42 +56,50 @@ workspace "CEFFramework"
         dependson { "CEFFramework" }
         links { "CEFFramework" }
 
+         -- Copy the DLL after building the target
+        postbuildcommands {
+            "echo Copying CEFFramework.dll into CEFFrameworkExample output directory.",
+            "{COPY} " .. build_dir .. "out/CEFFramework/CEFFramework.dll %{cfg.targetdir}"
+        }
+
     project "CEFFramework"
         kind "SharedLib"
-        staticruntime "Off"
         language "C++"
         cppdialect "C++20"
 
         targetname "CEFFramework"  -- <-- This is the output name (no config suffix)
-        targetdir "build/%{cfg.buildcfg}/out/CEFFramework"
-        objdir "build/%{cfg.buildcfg}/int/CEFFramework"
 
-        includedirs { "CEFFramework/include" }
+        targetdir (build_dir .. "out/CEFFramework")
+        objdir (build_dir .. "int/CEFFramework")
+
+        includedirs { "CEFFramework/include", "vendor/spdlog/include" }
+
         files { "CEFFramework/include/**.hpp",
                 "CEFFramework/src/**.hpp", 
-                "CEFFramework/src/**.cpp" 
+                "CEFFramework/src/**.cpp"
             }
 
         -- Common to all configurations
         filter { "system:windows" }
-            defines { "CEF_FRAMEWORK_BUILD" }
+            defines { "CF_BUILD" }
 
         filter "configurations:Debug"
-            defines { "CEF_FRAMEWORK_DEBUG", "CEF_FRAMEWORK_BUILD" }
+            defines { "CF_DEBUG", "CF_BUILD" }
             libdirs { "vendor/spdlog/build/Debug" }
             links {"spdlogd"}
             symbols "On"
 
         filter "configurations:Release"
-            defines { "CEF_FRAMEWORK_NDEBUG", "CEF_FRAMEWORK_BUILD" }
+            defines { "CF_NDEBUG", "CF_BUILD" }
             libdirs { "vendor/spdlog/build/Release" }
             links {"spdlog"}
             optimize "On"
 
         filter "configurations:Dist"
-            defines { "CEF_FRAMEWORK_NDEBUG", "CEF_FRAMEWORK_DIST", "CEF_FRAMEWORK_BUILD" }
+            defines { "CF_NDEBUG", "CF_DIST", "CF_BUILD" }
             libdirs { "vendor/spdlog/build/Release" }
             links {"spdlog"}
+
             optimize "On"
 
         filter {}
@@ -83,35 +108,22 @@ workspace "CEFFramework"
 
     project "spdlog"
         kind "StaticLib"
-        staticruntime "Off"
         language "C++"
         cppdialect "C++20"
 
         -- Tell Premake to run CMake for spdlog before building the project
-        filter "system:windows"
-            prebuildcommands {
-                "cd vendor\\spdlog",
-                "rmdir /s /q build",
-                "mkdir build",
-                "cd build",
-                "cmake ..",
-                "cmake --build ."
-            }
-
-        filter "system:linux or system:macosx"
-            prebuildcommands {
-                "cd vendor/spdlog && rm -rf build && mkdir -p build && cd build && cmake .. && cmake --build ."
-            }
-
-        filter {}
+        prebuildcommands {
+            "echo Invoking spdlog's CMake build system.",
+            'cd vendor\\spdlog && cmake -S . -B build -G "Visual Studio 17 2022" && cmake --build build'
+        }
 
         links { "spdlog" }
 
         -- Include headers
         includedirs { "vendor/spdlog/include" }
 
-        -- Optionally, exclude files since spdlog is built separately
-        files { } -- no source files here, built by CMake
+        files {} -- no source files here, built by CMake
 
-        -- Where to put IDE artifacts
-        objdir "vendor/spdlog/ide-obj/%{cfg.buildcfg}"
+        -- Where to put IDE artifacts...
+        targetdir "vendor/spdlog/build/%{cfg.buildcfg}/ide-out"
+        objdir "vendor/spdlog/build/%{cfg.buildcfg}/ide-int/"
